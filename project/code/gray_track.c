@@ -9,11 +9,9 @@
 //-------------------------------------------------------------------
 // 全局变量定义
 //-------------------------------------------------------------------
-// 灰度传感器预标定值 (黑线 min / 白线 max, RAW 空间)
-// 灰度传感器预标定值 (黑线 min / 白线 max, RAW 空间, 8bit ADC 0~255)
-uint16 gray_max[8] = {250, 250, 239, 247, 233, 240, 249, 216};   // 用户实测白线最大值
-uint16 gray_min[8] = { 51,  59,  40,  45,  37,  42,  52,  35};   // 用户实测黑线最小值
-uint8  gray_threshold = 45;       // 灰度二值化阈值 (DEAL 空间 0~100)
+uint16 gray_max[8] = {0};
+uint16 gray_min[8] = {4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095};
+uint8  gray_threshold = 30;       // 灰度二值化阈值 (DEAL 空间 0~100)
 float  gray_deviation = 0.0f;     // 黑线偏差（负=偏左，正=偏右，0=居中）
 
 //-------------------------------------------------------------------
@@ -60,7 +58,7 @@ void gray_save_max_min_to_array(void)
 //-------------------------------------------------------------------
 void gray_calculate_threshold(void)
 {
-    gray_threshold = 45;
+    gray_threshold = 30;
     gs08ra_set_threshold(gray_threshold);
 }
 
@@ -185,12 +183,12 @@ static uint8_t turn_debounce   = 0;      // 转弯去抖
 //-------------------------------------------------------------------
 static int16_t deviation_to_difpwm(float dev)
 {
-    // dev 范围 -3.5~+3.5，映射 DifPWM -4000~+4000 (适配 MOTOR_PWM_MAX=8000)
-    int16_t dif = (int16_t)(dev * 1140.0f);   // 3.5*1140≈4000
+    // dev 范围 -3.5~+3.5, 映射 DifPWM -2000~+2000
+    int16_t dif = (int16_t)(dev * 570.0f);   // 3.5*570≈2000
 
     // 限幅
-    if(dif >  4000) dif =  4000;
-    if(dif < -4000) dif = -4000;
+    if(dif >  2000) dif =  2000;
+    if(dif < -2000) dif = -2000;
     return dif;
 }
 
@@ -256,13 +254,13 @@ void track_control(void)
 
         if(turn_dev < 0)
         {
-            motor_set_pwm(1, -1600);   // 左轮反转
-            motor_set_pwm(2,  3600);   // 右轮正转 → 左转找线
+            motor_set_pwm(1, -1000);   // 左轮反转
+            motor_set_pwm(2,  2500);   // 右轮正转 → 左转找线
         }
         else
         {
-            motor_set_pwm(1,  3600);   // 左轮正转
-            motor_set_pwm(2, -1600);   // 右轮反转 → 右转找线
+            motor_set_pwm(1,  2500);   // 左轮正转
+            motor_set_pwm(2, -1000);   // 右轮反转 → 右转找线
         }
         return;
     }
@@ -308,14 +306,14 @@ void track_control(void)
 // 电池电压检测 (参照 E1_02 Battery ADC 例程)
 //===================================================================
 
-#define BATTERY_ADC_PIN     ADC0_CH7_A22    // 电池电压检测引脚
-float battery_voltage = 0.0f;
+//#define BATTERY_ADC_PIN     ADC0_CH7_A22    // 电池电压检测引脚
+//float battery_voltage = 0.0f;
 
-static void battery_read(void)
-{
-    uint16 adc_val = adc_convert(BATTERY_ADC_PIN);
-    battery_voltage = 37.0f * adc_val / 256.0f;    // 矫正系数 11.84/11.62≈1.019
-}
+//static void battery_read(void)
+//{
+//    uint16 adc_val = adc_convert(BATTERY_ADC_PIN);
+//    battery_voltage = 37.0f * adc_val / 256.0f;    // 矫正系数 11.84/11.62≈1.019
+//}
 
 //-------------------------------------------------------------------
 // 循迹小车初始化
@@ -325,10 +323,6 @@ void track_car_init(void)
     gs08ra_init();      // 初始化八路灰度传感器
     key_init(10);       // 初始化按键（10ms 扫描周期）
     motor_init();       // 初始化电机 PWM
-
-    // 加载预标定值到 gs08ra 库
-    gray_save_max_min_to_array();
-    gray_calculate_threshold();
 
     // 屏幕初始化 (参照 E5_04 IPS200 例程)
     ips200_set_dir(IPS200_PORTAIT);
@@ -384,10 +378,10 @@ static void track_display_update(void)
     ips200_show_string(80, 132, "Turns:");
     ips200_show_int(144, 132, turn_count, 3);
 
-    // 第10行: 电池电压
-    ips200_show_string(0, 148, "Bat:");
-    ips200_show_float(48, 148, battery_voltage, 2, 2);
-    ips200_show_string(120, 148, "V");
+//    // 第10行: 电池电压
+//    ips200_show_string(0, 148, "Bat:");
+//    ips200_show_float(48, 148, battery_voltage, 2, 2);
+//    ips200_show_string(120, 148, "V");
 }
 
 //-------------------------------------------------------------------
@@ -419,10 +413,10 @@ void track_car_loop(void)
                motor_left_pwm, motor_right_pwm, lost_line_flag, turn_count);
         track_display_update();                     // 更新屏幕显示
     }
-    if(cnt % 50 == 0)
-    {
-        battery_read();                             // 每 250ms 读取电池电压
-    }
+//    if(cnt % 50 == 0)
+//    {
+//        battery_read();                             // 每 250ms 读取电池电压
+//    }
     // ---------- 按键处理 ----------
     key_scanner();
 

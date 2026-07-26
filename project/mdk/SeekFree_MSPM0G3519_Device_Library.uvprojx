@@ -404,6 +404,16 @@
               <FileType>1</FileType>
               <FilePath>..\code\gray_track.c</FilePath>
             </File>
+            <File>
+              <FileName>menu_ui.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\code\menu_ui.c</FilePath>
+            </File>
+            <File>
+              <FileName>menu_ui.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\code\menu_ui.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

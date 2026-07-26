@@ -5,6 +5,7 @@
 ********************************************************************************************************************/
 
 #include "gray_track.h"
+#include "menu_ui.h"
 
 //-------------------------------------------------------------------
 // 全局变量定义
@@ -254,13 +255,13 @@ void track_control(void)
 
         if(turn_dev < 0)
         {
-            motor_set_pwm(1, -1000);   // 左轮反转
-            motor_set_pwm(2,  2500);   // 右轮正转 → 左转找线
+            motor_set_pwm(1, -(int16_t)g_lost_recovery_speed / 2);              // 左轮反转
+            motor_set_pwm(2,  (int16_t)g_lost_recovery_speed);                  // 右轮正转 → 左转找线
         }
         else
         {
-            motor_set_pwm(1,  2500);   // 左轮正转
-            motor_set_pwm(2, -1000);   // 右轮反转 → 右转找线
+            motor_set_pwm(1,  (int16_t)g_lost_recovery_speed);                  // 左轮正转
+            motor_set_pwm(2, -(int16_t)g_lost_recovery_speed / 2);              // 右轮反转 → 右转找线
         }
         return;
     }
@@ -277,7 +278,7 @@ void track_control(void)
     {
         float abs_dev = gray_deviation;
         if(abs_dev < 0) abs_dev = -abs_dev;
-        ave_pwm = 3000 - (int16_t)(abs_dev * 500.0f);
+        ave_pwm = (int16_t)g_base_speed - (int16_t)(abs_dev * 500.0f);
         if(ave_pwm < 1200) ave_pwm = 1200;   // 最低速度保护
     }
 
@@ -321,67 +322,8 @@ void track_control(void)
 void track_car_init(void)
 {
     gs08ra_init();      // 初始化八路灰度传感器
-    key_init(10);       // 初始化按键（10ms 扫描周期）
     motor_init();       // 初始化电机 PWM
-
-    // 屏幕初始化 (参照 E5_04 IPS200 例程)
-    ips200_set_dir(IPS200_PORTAIT);
-    ips200_set_color(RGB565_WHITE, RGB565_BLACK);
-    ips200_init(IPS200_TYPE_SPI);
-    ips200_clear();
-    ips200_show_string(0, 0, "Track Ready");
-}
-
-//-------------------------------------------------------------------
-// 屏幕显示更新 (参照 E5_04 IPS200 例程)
-//-------------------------------------------------------------------
-static void track_display_update(void)
-{
-    char buf[32];
-    uint8 i;
-
-    // 第1行: BIN 指示灯 (0=黑, 1=白)
-    ips200_show_string(0, 16, "BIN:");
-    for(i = 0; i < 8; i++)
-    {
-        buf[i] = gs08ra_bin_val[i] ? '0' : '1';
-    }
-    buf[8] = '\0';
-    ips200_show_string(48, 16, buf);
-
-    // 第2-3行: 灰度最大值 (分两行, 每行4个)
-    snprintf(buf, sizeof(buf), "Mx:%4d%4d%4d%4d", gray_max[0], gray_max[1], gray_max[2], gray_max[3]);
-    ips200_show_string(0, 32, buf);
-    snprintf(buf, sizeof(buf), "   %4d%4d%4d%4d", gray_max[4], gray_max[5], gray_max[6], gray_max[7]);
-    ips200_show_string(0, 48, buf);
-
-    // 第4-5行: 灰度最小值
-    snprintf(buf, sizeof(buf), "Mn:%4d%4d%4d%4d", gray_min[0], gray_min[1], gray_min[2], gray_min[3]);
-    ips200_show_string(0, 64, buf);
-    snprintf(buf, sizeof(buf), "   %4d%4d%4d%4d", gray_min[4], gray_min[5], gray_min[6], gray_min[7]);
-    ips200_show_string(0, 80, buf);
-
-    // 第7行: 偏差 + 阈值
-    ips200_show_string(0, 100, "Dev:");
-    ips200_show_float(48, 100, gray_deviation, 2, 2);
-    ips200_show_string(128, 100, "Thr:");
-    ips200_show_int(168, 100, gray_threshold, 3);
-
-    // 第8行: 电机 PWM
-    ips200_show_string(0, 116, "L:");
-    ips200_show_int(24, 116, motor_left_pwm, 5);
-    ips200_show_string(104, 116, "R:");
-    ips200_show_int(128, 116, motor_right_pwm, 5);
-
-    // 第9行: 状态 + 圈数
-    ips200_show_string(0, 132, lost_line_flag ? "LOST" : "TRACK");
-    ips200_show_string(80, 132, "Turns:");
-    ips200_show_int(144, 132, turn_count, 3);
-
-//    // 第10行: 电池电压
-//    ips200_show_string(0, 148, "Bat:");
-//    ips200_show_float(48, 148, battery_voltage, 2, 2);
-//    ips200_show_string(120, 148, "V");
+    // 屏幕和按键初始化交给 menu_ui_init()
 }
 
 //-------------------------------------------------------------------
@@ -396,7 +338,7 @@ void track_car_loop(void)
     gray_deviation = gray_calculate_deviation();    // 计算黑线偏差
     track_control();                                // 循迹控制（偏差→电机）
 
-    // ---------- 串口调试输出 + 屏幕显示（每 20 次 = 100ms） ----------
+    // ---------- 串口调试输出（每 10 次 = ~50ms） ----------
     if(cnt % 10 == 0)
     {
         printf("RAW:%d,%d,%d,%d,%d,%d,%d,%d\r\n",
@@ -411,51 +353,7 @@ void track_car_loop(void)
         printf("Deviation:%.2f  Threshold:%d\r\n", gray_deviation, gray_threshold);
         printf("Motor L:%d R:%d  Lost:%d  Turns:%d\r\n",
                motor_left_pwm, motor_right_pwm, lost_line_flag, turn_count);
-        track_display_update();                     // 更新屏幕显示
     }
-//    if(cnt % 50 == 0)
-//    {
-//        battery_read();                             // 每 250ms 读取电池电压
-//    }
-    // ---------- 按键处理 ----------
-    key_scanner();
-
-    if(key_get_state(KEY_1) == KEY_SHORT_PRESS)
-    {
-        gray_max_min_reset();
-        printf("//==== Reset Max and Min ====//\r\n");
-        system_delay_ms(500);
-    }
-
-    if(key_get_state(KEY_2) == KEY_SHORT_PRESS)
-    {
-        gray_save_max_min_to_array();
-        gray_calculate_threshold();                         // 自动计算阈值
-        printf("//==== Saved & Thr=%d ====//\r\n", gray_threshold);
-        system_delay_ms(500);
-    }
-
-    if(key_get_state(KEY_3) == KEY_SHORT_PRESS)
-    {
-        gray_calculate_threshold();                         // 重新自动算阈值
-        printf("//==== Thr=%d ====//\r\n", gray_threshold);
-    }
-
-    if(key_get_state(KEY_4) == KEY_SHORT_PRESS)
-    {
-        // 按键4：使能/失能电机（川鱼方式）
-        motor_enable = !motor_enable;
-        if(!motor_enable)
-        {
-            motor_stop();
-            turn_count = 0;
-            printf("//==== Motor Disabled ====//\r\n");
-        }
-        else
-        {
-            printf("//==== Motor Enabled ====//\r\n");
-        }
-        system_delay_ms(500);
-    }
-    system_delay_ms(5);   // 5ms 循环周期
+    // 屏幕显示由 menu_ui_run() 统一管理
+    // 按键处理由 menu_ui_run() 统一管理
 }

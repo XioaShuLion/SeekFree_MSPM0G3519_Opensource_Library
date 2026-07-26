@@ -1,4 +1,4 @@
-./objects/main.o: ..\user\src\main.c \
+./objects/menu_ui.o: ..\code\menu_ui.c ..\code\menu_ui.h \
   ..\..\libraries\zf_common\zf_common_headfile.h \
   ..\..\libraries\sdk\ti_config\ti_msp_dl_config.h \
   ..\..\libraries\sdk\ti\devices\msp\msp.h \
@@ -114,5 +114,4 @@
   ..\..\libraries\zf_device\zf_device_key.h \
   ..\..\libraries\zf_device\zf_device_gs08ra.h \
   ..\..\libraries\zf_components\seekfree_assistant.h \
-  ..\..\libraries\zf_components\seekfree_assistant_interface.h \
-  ..\code\gray_track.h ..\code\menu_ui.h
+  ..\..\libraries\zf_components\seekfree_assistant_interface.h

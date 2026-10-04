@@ -414,6 +414,16 @@
               <FileType>5</FileType>
               <FilePath>..\code\menu_ui.h</FilePath>
             </File>
+            <File>
+              <FileName>stepper_m415b.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\code\stepper_m415b.c</FilePath>
+            </File>
+            <File>
+              <FileName>stepper_m415b.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\code\stepper_m415b.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

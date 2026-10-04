@@ -2,6 +2,7 @@
 ".\objects\pid_opensourse.o"
 ".\objects\gray_track.o"
 ".\objects\menu_ui.o"
+".\objects\stepper_m415b.o"
 ".\objects\main.o"
 ".\objects\isr.o"
 ".\objects\zf_common_clock.o"
